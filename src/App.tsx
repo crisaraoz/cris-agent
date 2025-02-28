@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Plus, Menu, Settings, User, Bot, ChevronDown, ExternalLink, LogOut, MessageSquare, Trash2, X } from 'lucide-react';
 
@@ -104,7 +105,7 @@ function App() {
     setTimeout(() => {
       const aiResponse = { 
         role: 'assistant', 
-        content: `I'm your personal AI assistant. This is a simulated response to: "${input}"`
+        content: `EUUUU BATAA BATAAAAAAA. Me preguntasteee: "${input}"`
       };
       
       const updatedMessages = [...newMessages, aiResponse];
