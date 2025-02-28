@@ -39,3 +39,8 @@ body {
     opacity: 0.3;
   }
 }
+
+/* Prevent text selection during resize */
+.resize-handle {
+  user-select: none;
+}

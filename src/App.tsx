@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Plus, Menu, Settings, User, Bot, ChevronDown, ExternalLink, LogOut, MessageSquare, Trash2, X } from 'lucide-react';
 
@@ -7,7 +7,7 @@ function App() {
     { role: 'assistant', content: 'Hello! I\'m your personal AI assistant. How can I help you today?' }
   ]);
   const [input, setInput] = useState('');
-  const [sidebarMode, setSidebarMode] = useState<'full' | 'icons' | 'hidden'>('full');
+  const [sidebarMode, setSidebarMode] = useState<'full' | 'icons' | 'hidden'>('icons'); // Changed default to 'icons'
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeConversation, setActiveConversation] = useState<number | null>(1); // Start with the first conversation active
@@ -21,6 +21,12 @@ function App() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<number | null>(null);
   const [hoveredConversation, setHoveredConversation] = useState<number | null>(null);
+  
+  // For resizable sidebar
+  const [sidebarWidth, setSidebarWidth] = useState(64); // Default width for 'icons' mode (w-16 = 64px)
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const resizeRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -61,6 +67,55 @@ function App() {
       );
     }
   }, [messages, activeConversation, isInitialLoad]);
+
+  // Handle sidebar resizing
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      const newWidth = e.clientX;
+      
+      // Set minimum and maximum widths
+      if (newWidth < 64) {
+        setSidebarWidth(64); // Minimum width (icon mode)
+        setSidebarMode('icons');
+      } else if (newWidth < 180) {
+        setSidebarWidth(newWidth);
+        setSidebarMode('icons'); // Corrected to a valid mode
+      } else {
+        setSidebarWidth(256); // Maximum width (full mode = 256px)
+        setSidebarMode('full');
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      
+      // Snap to predefined sizes
+      if (sidebarWidth < 100) {
+        setSidebarWidth(64); // Icon mode
+        setSidebarMode('icons');
+      } else if (sidebarWidth > 200) {
+        setSidebarWidth(256); // Full mode
+        setSidebarMode('full');
+      }
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, sidebarWidth]);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +160,7 @@ function App() {
     setTimeout(() => {
       const aiResponse = { 
         role: 'assistant', 
-        content: `EUUUU BATAA BATAAAAAAA. Me preguntasteee: "${input}"`
+        content: `I'm your personal AI assistant. This is a simulated response to: "${input}"`
       };
       
       const updatedMessages = [...newMessages, aiResponse];
@@ -128,8 +183,15 @@ function App() {
 
   const toggleSidebar = () => {
     setSidebarMode(current => {
-      if (current === 'full') return 'icons';
-      if (current === 'icons') return 'hidden';
+      if (current === 'full') {
+        setSidebarWidth(64);
+        return 'icons';
+      }
+      if (current === 'icons') {
+        setSidebarWidth(0);
+        return 'hidden';
+      }
+      setSidebarWidth(256);
       return 'full';
     });
   };
@@ -156,11 +218,10 @@ function App() {
   };
 
   const getSidebarWidth = () => {
-    switch (sidebarMode) {
-      case 'full': return 'w-64';
-      case 'icons': return 'w-16';
-      case 'hidden': return 'w-0';
-    }
+    if (sidebarMode === 'hidden') return 'w-0';
+    if (sidebarMode === 'icons') return 'w-16';
+    if (sidebarMode === 'full') return 'w-64';
+    return `w-[${sidebarWidth}px]`;
   };
 
   const handleDeleteClick = (e: React.MouseEvent, id: number) => {
@@ -201,20 +262,24 @@ function App() {
   return (
     <div className="flex h-screen bg-[#343541] text-gray-100">
       {/* Sidebar */}
-      <div className={`${getSidebarWidth()} bg-[#202123] transition-all duration-300 overflow-hidden flex flex-col`}>
+      <div 
+        ref={sidebarRef}
+        className={`bg-[#202123] transition-all duration-300 overflow-hidden flex flex-col relative`}
+        style={{ width: `${sidebarWidth}px` }}
+      >
         <div className="p-2">
           <button 
             onClick={startNewChat}
             className={`flex items-center gap-3 w-full p-3 rounded-md hover:bg-gray-700 border border-gray-600 text-sm ${sidebarMode === 'icons' ? 'justify-center' : ''}`}
           >
             <Plus size={16} />
-            {sidebarMode === 'full' && <span>New chat</span>}
+            {(sidebarMode === 'full') && <span>New chat</span>}
           </button>
         </div>
         
         <div className="flex-1 overflow-y-auto">
           <div className="px-2 py-2">
-            {sidebarMode === 'full' && <h2 className="px-2 text-xs font-medium text-gray-400 mb-1">Today</h2>}
+            {(sidebarMode === 'full') && <h2 className="px-2 text-xs font-medium text-gray-400 mb-1">Today</h2>}
             {conversations.map(conv => (
               <div 
                 key={conv.id}
@@ -228,9 +293,9 @@ function App() {
                   title={sidebarMode === 'icons' ? conv.title : ''}
                 >
                   <MessageSquare size={16} />
-                  {sidebarMode === 'full' && <span className="truncate">{conv.title}</span>}
+                  {(sidebarMode === 'full') && <span className="truncate">{conv.title}</span>}
                 </button>
-                {sidebarMode === 'full' && (hoveredConversation === conv.id || activeConversation === conv.id) && (
+                {(sidebarMode === 'full') && (hoveredConversation === conv.id || activeConversation === conv.id) && (
                   <button
                     onClick={(e) => handleDeleteClick(e, conv.id)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-gray-600 text-gray-400 hover:text-gray-100"
@@ -247,17 +312,24 @@ function App() {
         <div className="border-t border-gray-700 p-2">
           <button className={`flex items-center gap-3 w-full p-3 rounded-md hover:bg-gray-700 text-sm ${sidebarMode === 'icons' ? 'justify-center' : ''}`}>
             <User size={16} />
-            {sidebarMode === 'full' && <span>My Account</span>}
+            {(sidebarMode === 'full') && <span>My Account</span>}
           </button>
           <button className={`flex items-center gap-3 w-full p-3 rounded-md hover:bg-gray-700 text-sm ${sidebarMode === 'icons' ? 'justify-center' : ''}`}>
             <Settings size={16} />
-            {sidebarMode === 'full' && <span>Settings</span>}
+            {(sidebarMode === 'full') && <span>Settings</span>}
           </button>
           <button className={`flex items-center gap-3 w-full p-3 rounded-md hover:bg-gray-700 text-sm ${sidebarMode === 'icons' ? 'justify-center' : ''}`}>
             <LogOut size={16} />
-            {sidebarMode === 'full' && <span>Log out</span>}
+            {(sidebarMode === 'full') && <span>Log out</span>}
           </button>
         </div>
+
+        {/* Resize handle */}
+        <div 
+          ref={resizeRef}
+          className="absolute top-0 right-0 w-1 h-full cursor-ew-resize bg-gray-600 opacity-0 hover:opacity-100 transition-opacity"
+          onMouseDown={startResizing}
+        ></div>
       </div>
       
       {/* Main content */}
